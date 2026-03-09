@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeadRadar — Find Clients Near You</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #00ff88;
+    --accent2: #ff6b35;
+    --accent3: #4d9fff;
+    --text: #e8e8f0;
+    --muted: #666680;
+    --danger: #ff4466;
+    --warn: #ffaa00;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,255,136,0.08);
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .logo-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(32px, 6vw, 56px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -1px;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 12px;
+    line-height: 1.6;
+  }
+
+  /* Input Section */
+  .input-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+
+  .input-label {
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .input-field {
+    flex: 1;
+    min-width: 200px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,255,136,0.1);
+  }
+
+  .input-field::placeholder { color: var(--muted); }
+
+  /* Filters */
+  .filters {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  .filter-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    transition: all 0.2s;
+    user-select: none;
+  }
+
+  .filter-chip input { display: none; }
+
+  .filter-chip.active {
+    border-color: var(--accent);
+    background: rgba(0,255,136,0.08);
+    color: var(--accent);
+  }
+
+  .filter-chip:hover { border-color: var(--accent); color: var(--text); }
+
+  /* Business types */
+  .types-grid {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  .type-chip {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .type-chip.selected {
+    border-color: var(--accent2);
+    background: rgba(255,107,53,0.1);
+    color: var(--accent2);
+  }
+
+  /* Scan button */
+  .scan-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-top: 20px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .scan-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,255,136,0.3); }
+  .scan-btn:active { transform: translateY(0); }
+  .scan-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .scan-btn .btn-text { position: relative; z-index: 1; }
+
+  /* Loading */
+  .loading-section {
+    display: none;
+    text-align: center;
+    padding: 48px 20px;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .radar {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    border: 2px solid rgba(0,255,136,0.2);
+    position: relative;
+    margin: 0 auto 24px;
+    animation: radarSpin 2s linear infinite;
+  }
+
+  .radar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 60%, rgba(0,255,136,0.4) 100%);
+    animation: radarSpin 2s linear infinite;
+  }
+
+  .radar-dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 12px var(--accent);
+  }
+
+  .loading-text {
+    color: var(--accent);
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+
+  .loading-steps {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .step {
+    font-size: 11px;
+    color: var(--muted);
+    transition: color 0.3s;
+  }
+
+  .step.active { color: var(--accent); }
+  .step.done { color: var(--text); }
+
+  /* Results */
+  .results-section { display: none; animation: fadeUp 0.4s ease both; }
+
+  .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .results-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .results-count {
+    background: rgba(0,255,136,0.1);
+    border: 1px solid rgba(0,255,136,0.3);
+    color: var(--accent);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+
+  .stat-label { font-size: 10px; color: var(--muted); margin-top: 4px; letter-spacing: 1px; }
+
+  /* Lead cards */
+  .leads-grid { display: flex; flex-direction: column; gap: 12px; }
+
+  .lead-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    transition: all 0.2s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .lead-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--accent);
+    transform: scaleY(0);
+    transition: transform 0.2s;
+  }
+
+  .lead-card:hover { border-color: rgba(0,255,136,0.3); transform: translateX(4px); }
+  .lead-card:hover::before { transform: scaleY(1); }
+
+  .lead-card.priority-high::before { background: var(--danger); transform: scaleY(1); }
+  .lead-card.priority-medium::before { background: var(--warn); transform: scaleY(1); }
+  .lead-card.priority-low::before { background: var(--accent3); transform: scaleY(1); }
+
+  .lead-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .lead-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .lead-type {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .score-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .score-hot { background: rgba(255,68,102,0.15); color: var(--danger); border: 1px solid rgba(255,68,102,0.3); }
+  .score-warm { background: rgba(255,170,0,0.15); color: var(--warn); border: 1px solid rgba(255,170,0,0.3); }
+  .score-cool { background: rgba(77,159,255,0.15); color: var(--accent3); border: 1px solid rgba(77,159,255,0.3); }
+
+  .lead-signals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .signal {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+  }
+
+  .signal-red { background: rgba(255,68,102,0.1); color: #ff8899; border: 1px solid rgba(255,68,102,0.2); }
+  .signal-yellow { background: rgba(255,170,0,0.1); color: #ffc44d; border: 1px solid rgba(255,170,0,0.2); }
+  .signal-blue { background: rgba(77,159,255,0.1); color: #7ab8ff; border: 1px solid rgba(77,159,255,0.2); }
+
+  .lead-pitch {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: var(--surface2);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.6;
+    border-left: 2px solid var(--accent);
+    display: none;
+  }
+
+  .lead-card.expanded .lead-pitch { display: block; }
+
+  .lead-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    display: none;
+  }
+
+  .lead-card.expanded .lead-actions { display: flex; }
+
+  .action-btn {
+    padding: 7px 14px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .action-btn.primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+  .action-btn.primary:hover { box-shadow: 0 4px 12px rgba(0,255,136,0.3); }
+
+  /* Expand hint */
+  .expand-hint {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 10px;
+    text-align: right;
+  }
+
+  /* Reset btn */
+  .reset-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    transition: all 0.2s;
+  }
+
+  .reset-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* Error */
+  .error-box {
+    display: none;
+    background: rgba(255,68,102,0.08);
+    border: 1px solid rgba(255,68,102,0.3);
+    border-radius: 12px;
+    padding: 20px;
+    color: #ff8899;
+    font-size: 13px;
+    text-align: center;
+    margin-top: 16px;
+  }
+
+  /* WhatsApp message box */
+  .wa-box {
+    background: rgba(37,211,102,0.08);
+    border: 1px solid rgba(37,211,102,0.25);
+    border-radius: 10px;
+    padding: 14px;
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #aaffcc;
+    white-space: pre-wrap;
+    display: none;
+  }
+
+  .lead-card.show-wa .wa-box { display: block; }
+
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @keyframes radarSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <!-- File:// warning banner -->
+  <div id="fileBanner" style="display:none; background:rgba(255,170,0,0.1); border:1px solid rgba(255,170,0,0.4); border-radius:12px; padding:16px 20px; margin-bottom:24px; font-size:12px; line-height:1.7; color:#ffc44d;">
+    <div style="font-family:'Syne',sans-serif; font-weight:700; font-size:14px; margin-bottom:8px;">⚠️ Hosting Required</div>
+    This tool cannot run from your phone's local storage — browsers block API calls from local files.<br><br>
+    <strong style="color:#fff;">Quickest fix (30 seconds):</strong><br>
+    1. On your PC, go to <strong>netlify.com/drop</strong><br>
+    2. Drag &amp; drop this HTML file onto the page<br>
+    3. You'll get a free live URL instantly<br>
+    4. Open that URL on your phone — done! ✅<br><br>
+    <strong style="color:#fff;">Or use GitHub Pages</strong> for a permanent free link.
+  </div>
+
+  <div class="header">
+    <div class="logo-badge">🎯 LeadRadar v1.0</div>
+    <h1>Find Your Next<br><span>Web Design Clients</span></h1>
+    <p class="subtitle">Paste a Google Maps link or describe your area.<br>AI scans for businesses with weak/no web presence.</p>
+  </div>
+
+  <!-- Input Card -->
+  <div class="input-card" id="inputSection">
+    <label class="input-label">📍 Your Target Area</label>
+    <div class="input-row">
+      <input
+        type="text"
+        class="input-field"
+        id="locationInput"
+        placeholder="e.g. CBD Belapur Sector 15, Navi Mumbai — or paste a Google Maps link"
+      />
+    </div>
+
+    <label class="input-label" style="margin-top:20px;">🏪 Business Types to Scan</label>
+    <div class="types-grid" id="typesGrid">
+      <div class="type-chip selected" data-type="gym">💪 Gyms</div>
+      <div class="type-chip selected" data-type="salon">💇 Salons</div>
+      <div class="type-chip selected" data-type="cafe">☕ Cafes</div>
+      <div class="type-chip selected" data-type="clinic">🏥 Clinics</div>
+      <div class="type-chip selected" data-type="coaching">📚 Coaching</div>
+      <div class="type-chip selected" data-type="clothing">👗 Clothing</div>
+      <div class="type-chip" data-type="restaurant">🍽️ Restaurants</div>
+      <div class="type-chip" data-type="pharmacy">💊 Pharmacy</div>
+      <div class="type-chip" data-type="hardware">🔧 Hardware</div>
+      <div class="type-chip" data-type="bakery">🍞 Bakery</div>
+    </div>
+
+    <label class="input-label" style="margin-top:20px;">🔍 Lead Filters</label>
+    <div class="filters">
+      <label class="filter-chip active" id="chip-nowebsite">
+        <input type="checkbox" checked> 🚫 No Website
+      </label>
+      <label class="filter-chip active" id="chip-lowreviews">
+        <input type="checkbox" checked> ⭐ Low Reviews (&lt;20)
+      </label>
+      <label class="filter-chip active" id="chip-badreviews">
+        <input type="checkbox" checked> 📉 Below 4.0 Stars
+      </label>
+      <label class="filter-chip active" id="chip-newbiz">
+        <input type="checkbox" checked> 🆕 Opened &lt;3 Years
+      </label>
+    </div>
+
+    <!-- proxy handles auth -->
+
+    <button class="scan-btn" id="scanBtn" onclick="startScan()">
+      <span class="btn-text">⚡ SCAN FOR LEADS</span>
+    </button>
+
+    <div class="error-box" id="errorBox"></div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-section" id="loadingSection">
+    <div class="radar"><div class="radar-dot"></div></div>
+    <div class="loading-text">SCANNING AREA...</div>
+    <div class="loading-steps">
+      <div class="step active" id="step1">▸ Analyzing location data</div>
+      <div class="step" id="step2">▸ Identifying business types</div>
+      <div class="step" id="step3">▸ Checking web presence signals</div>
+      <div class="step" id="step4">▸ Scoring lead potential</div>
+      <div class="step" id="step5">▸ Generating pitch scripts</div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-section" id="resultsSection">
+    <div class="results-header">
+      <div>
+        <div class="results-title">🎯 Leads Found</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:4px;" id="areaLabel"></div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <div class="results-count" id="resultsCount">0 leads</div>
+        <button class="reset-btn" onclick="resetTool()">↺ New Scan</button>
+      </div>
+    </div>
+
+    <div class="stats-row" id="statsRow"></div>
+    <div class="leads-grid" id="leadsGrid"></div>
+  </div>
+
+</div>
+
+<script>
+  // Load saved API key from localStorage
+  window.addEventListener('load', () => {
+    const saved = localStorage.getItem('lr_apikey');
+    if (saved) document.getElementById('apiKeyInput').value = saved;
+  });
+
+  // Save API key when user types it
+  document.addEventListener('DOMContentLoaded', () => {
+    const keyInput = document.getElementById('apiKeyInput');
+    if (keyInput) {
+      keyInput.addEventListener('change', () => {
+        if (keyInput.value.trim()) localStorage.setItem('lr_apikey', keyInput.value.trim());
+      });
+    }
+  });
+
+  // Detect local file protocol
+  if (window.location.protocol === 'file:') {
+    document.getElementById('fileBanner').style.display = 'block';
+  }
+
+  // Type chip toggle
+  document.querySelectorAll('.type-chip').forEach(chip => {
+    chip.addEventListener('click', () => chip.classList.toggle('selected'));
+  });
+
+  // Filter chip toggle
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => chip.classList.toggle('active'));
+  });
+
+  let currentLeads = [];
+
+  function getSelectedTypes() {
+    return [...document.querySelectorAll('.type-chip.selected')].map(c => c.dataset.type);
+  }
+
+  function getActiveFilters() {
+    return {
+      noWebsite: document.getElementById('chip-nowebsite').classList.contains('active'),
+      lowReviews: document.getElementById('chip-lowreviews').classList.contains('active'),
+      badReviews: document.getElementById('chip-badreviews').classList.contains('active'),
+      newBiz: document.getElementById('chip-newbiz').classList.contains('active'),
+    };
+  }
+
+  async function startScan() {
+    const location = document.getElementById('locationInput').value.trim();
+    if (!location) {
+      showError('Please enter a location or paste a Google Maps link.');
+      return;
+    }
+
+    const types = getSelectedTypes();
+    if (types.length === 0) {
+      showError('Please select at least one business type.');
+      return;
+    }
+
+    const filters = getActiveFilters();
+
+    // UI state
+    document.getElementById('scanBtn').disabled = true;
+    document.getElementById('errorBox').style.display = 'none';
+    document.getElementById('inputSection').style.opacity = '0.4';
+    document.getElementById('loadingSection').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+
+    // Animate steps
+    animateSteps();
+
+    try {
+      const leads = await fetchLeadsFromAI(location, types, filters);
+      showResults(leads, location);
+    } catch (err) {
+      showError('Scan failed: ' + err.message + ' — Check your connection or try again.');
+    } finally {
+      document.getElementById('scanBtn').disabled = false;
+      document.getElementById('inputSection').style.opacity = '1';
+      document.getElementById('loadingSection').style.display = 'none';
+    }
+  }
+
+  function animateSteps() {
+    const steps = ['step1','step2','step3','step4','step5'];
+    steps.forEach((id, i) => {
+      setTimeout(() => {
+        if (i > 0) document.getElementById(steps[i-1]).className = 'step done';
+        document.getElementById(id).className = 'step active';
+      }, i * 1400);
+    });
+  }
+
+  async function fetchLeadsFromAI(location, types, filters) {
+    const filterDesc = [];
+    if (filters.noWebsite) filterDesc.push('no website');
+    if (filters.lowReviews) filterDesc.push('fewer than 20 Google reviews');
+    if (filters.badReviews) filterDesc.push('rating below 4.0 stars');
+    if (filters.newBiz) filterDesc.push('opened within last 3 years');
+
+    const prompt = `You are a lead generation expert for a freelance web designer in India targeting local small businesses.
+
+Location: "${location}"
+Business types to find: ${types.join(', ')}
+Lead criteria (businesses matching these have weak online presence): ${filterDesc.join(', ')}
+
+Generate 8-10 REALISTIC, SPECIFIC potential client leads for this area. These should be the kinds of businesses that actually exist in this type of Indian locality/market area.
+
+For each lead, provide:
+1. Business name (realistic Indian business name)
+2. Type (from the list above)
+3. Priority score: "HOT" / "WARM" / "COOL"
+4. Signals (2-4 weakness signals from: no_website, low_reviews, bad_rating, newly_opened, no_google_maps, poor_social, outdated_info)
+5. Estimated age (e.g. "~1 year old", "~2 years old", "~6 months old" — keep under 3 years for new ones)
+6. Review count estimate (e.g. "4 reviews", "12 reviews")  
+7. Rating estimate (e.g. "3.8 ★", "4.1 ★", "No rating")
+8. A 2-sentence personalized sales pitch in Hinglish (mix of Hindi and English) for walking into this business
+9. A WhatsApp message (2-3 lines) to send as a cold outreach
+10. Estimated project value in INR (e.g. ₹3,500 / ₹5,000 / ₹7,000)
+
+Respond ONLY with a valid JSON array. No markdown, no explanation. Format:
+[
+  {
+    "name": "...",
+    "type": "...",
+    "priority": "HOT|WARM|COOL",
+    "signals": ["no_website", "low_reviews"],
+    "age": "~1 year old",
+    "reviews": "6 reviews",
+    "rating": "3.9 ★",
+    "pitch": "...",
+    "whatsapp": "...",
+    "value": "₹4,500"
+  }
+]`;
+
+    const response = await fetch("PROXY_URL_HERE", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    if (!response.ok) throw new Error(`API error ${response.status}`);
+    const data = await response.json();
+
+    const raw = data.content.map(b => b.text || '').join('');
+    const clean = raw.replace(/```json|```/g, '').trim();
+
+    let leads;
+    try {
+      leads = JSON.parse(clean);
+    } catch(e) {
+      const start = clean.indexOf('[');
+      if (start === -1) throw new Error('Unexpected response. Please try again.');
+      let str = clean.slice(start);
+      const lastBrace = str.lastIndexOf('}');
+      if (lastBrace === -1) throw new Error('No data returned. Please try again.');
+      str = str.slice(0, lastBrace + 1).replace(/,\s*$/, '') + ']';
+      try { leads = JSON.parse(str); }
+      catch(e2) { throw new Error('Parse error. Please try again.'); }
+    }
+    if (!Array.isArray(leads) || leads.length === 0) throw new Error('No leads found. Try a different area.');
+    return leads;
+  }
+
+  function showResults(leads, location) {
+    currentLeads = leads;
+    document.getElementById('resultsSection').style.display = 'block';
+
+    // Parse location for display
+    let areaLabel = location;
+    if (location.includes('google.com/maps')) areaLabel = 'Scanned from Google Maps link';
+    document.getElementById('areaLabel').textContent = '📍 ' + areaLabel;
+
+    // Count stats
+    const hot = leads.filter(l => l.priority === 'HOT').length;
+    const warm = leads.filter(l => l.priority === 'WARM').length;
+    const totalValue = leads.reduce((sum, l) => {
+      const num = parseInt((l.value || '').replace(/[^\d]/g, '')) || 0;
+      return sum + num;
+    }, 0);
+    const noSite = leads.filter(l => l.signals.includes('no_website')).length;
+
+    document.getElementById('statsRow').innerHTML = `
+      <div class="stat-box"><div class="stat-value" style="color:var(--danger)">${hot}</div><div class="stat-label">HOT LEADS</div></div>
+      <div class="stat-box"><div class="stat-value" style="color:var(--warn)">${warm}</div><div class="stat-label">WARM LEADS</div></div>
+      <div class="stat-box"><div class="stat-value">${noSite}</div><div class="stat-label">NO WEBSITE</div></div>
+      <div class="stat-box"><div class="stat-value" style="color:var(--accent)">₹${(totalValue/1000).toFixed(0)}k</div><div class="stat-label">POTENTIAL VALUE</div></div>
+    `;
+
+    document.getElementById('resultsCount').textContent = leads.length + ' leads';
+
+    // Render cards
+    const grid = document.getElementById('leadsGrid');
+    grid.innerHTML = '';
+
+    leads.forEach((lead, i) => {
+      const priorityClass = lead.priority === 'HOT' ? 'priority-high' : lead.priority === 'WARM' ? 'priority-medium' : 'priority-low';
+      const scoreClass = lead.priority === 'HOT' ? 'score-hot' : lead.priority === 'WARM' ? 'score-warm' : 'score-cool';
+      const scoreIcon = lead.priority === 'HOT' ? '🔥' : lead.priority === 'WARM' ? '⚡' : '💧';
+
+      const signalHtml = (lead.signals || []).map(s => {
+        const map = {
+          no_website: ['signal-red', '🚫 No Website'],
+          low_reviews: ['signal-yellow', '⭐ Low Reviews'],
+          bad_rating: ['signal-red', '📉 Bad Rating'],
+          newly_opened: ['signal-blue', '🆕 New Business'],
+          no_google_maps: ['signal-yellow', '📍 Not on Maps'],
+          poor_social: ['signal-yellow', '📵 Poor Social'],
+          outdated_info: ['signal-blue', '🕰️ Outdated Info'],
+        };
+        const [cls, label] = map[s] || ['signal-blue', s];
+        return `<div class="signal ${cls}">${label}</div>`;
+      }).join('');
+
+      const card = document.createElement('div');
+      card.className = `lead-card ${priorityClass}`;
+      card.style.animationDelay = (i * 0.06) + 's';
+      card.innerHTML = `
+        <div class="lead-top">
+          <div>
+            <div class="lead-name">${lead.name}</div>
+            <div class="lead-type">${lead.type} · ${lead.age || ''} · ${lead.reviews || ''} · ${lead.rating || ''}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <div class="score-badge ${scoreClass}">${scoreIcon} ${lead.priority}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--accent)">${lead.value}</div>
+          </div>
+        </div>
+        <div class="lead-signals">${signalHtml}</div>
+        <div class="expand-hint">▸ Click to see pitch & WhatsApp script</div>
+        <div class="lead-pitch">
+          <div style="font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:6px;">💬 WALK-IN PITCH (Hinglish)</div>
+          ${lead.pitch}
+        </div>
+        <div class="wa-box">📱 WhatsApp Message:\n\n${lead.whatsapp}</div>
+        <div class="lead-actions">
+          <button class="action-btn primary" onclick="copyPitch(${i}, event)">📋 Copy Pitch</button>
+          <button class="action-btn" onclick="toggleWA(${i}, event)">📱 WhatsApp Script</button>
+          <button class="action-btn" onclick="markContacted(this, event)">✓ Mark Contacted</button>
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        card.classList.toggle('expanded');
+      });
+
+      grid.appendChild(card);
+    });
+  }
+
+  function copyPitch(index, e) {
+    e.stopPropagation();
+    const lead = currentLeads[index];
+    navigator.clipboard.writeText(lead.pitch).then(() => {
+      const btn = e.target;
+      btn.textContent = '✅ Copied!';
+      setTimeout(() => btn.textContent = '📋 Copy Pitch', 2000);
+    });
+  }
+
+  function toggleWA(index, e) {
+    e.stopPropagation();
+    const cards = document.querySelectorAll('.lead-card');
+    cards[index].classList.toggle('show-wa');
+  }
+
+  function markContacted(btn, e) {
+    e.stopPropagation();
+    const card = btn.closest('.lead-card');
+    card.style.opacity = '0.4';
+    btn.textContent = '✓ Contacted';
+    btn.disabled = true;
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = '⚠ ' + msg;
+    box.style.display = 'block';
+  }
+
+  function resetTool() {
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('inputSection').style.opacity = '1';
+    document.getElementById('locationInput').value = '';
+    document.getElementById('scanBtn').disabled = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
