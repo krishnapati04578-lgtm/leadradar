@@ -727,13 +727,13 @@
   }
 
   async function fetchLeadsFromAI(location, types, filters) {
-    const filterDesc = [];
-    if (filters.noWebsite) filterDesc.push('no website');
-    if (filters.lowReviews) filterDesc.push('fewer than 20 Google reviews');
-    if (filters.badReviews) filterDesc.push('rating below 4.0 stars');
-    if (filters.newBiz) filterDesc.push('opened within last 3 years');
+  const filterDesc = [];
+  if (filters.noWebsite) filterDesc.push('no website');
+  if (filters.lowReviews) filterDesc.push('fewer than 20 Google reviews');
+  if (filters.badReviews) filterDesc.push('rating below 4.0 stars');
+  if (filters.newBiz) filterDesc.push('opened within last 3 years');
 
-    const prompt = `You are a lead generation expert for a freelance web designer in India targeting local small businesses.
+  const prompt = `You are a lead generation expert for a freelance web designer in India targeting local small businesses.
 
 Location: "${location}"
 Business types to find: ${types.join(', ')}
@@ -746,11 +746,11 @@ For each lead, provide:
 2. Type (from the list above)
 3. Priority score: "HOT" / "WARM" / "COOL"
 4. Signals (2-4 weakness signals from: no_website, low_reviews, bad_rating, newly_opened, no_google_maps, poor_social, outdated_info)
-5. Estimated age (e.g. "~1 year old", "~2 years old", "~6 months old" — keep under 3 years for new ones)
-6. Review count estimate (e.g. "4 reviews", "12 reviews")  
+5. Estimated age (e.g. "~1 year old", "~2 years old", "~6 months old")
+6. Review count estimate (e.g. "4 reviews", "12 reviews")
 7. Rating estimate (e.g. "3.8 ★", "4.1 ★", "No rating")
-8. A 2-sentence personalized sales pitch in Hinglish (mix of Hindi and English) for walking into this business
-9. A WhatsApp message (2-3 lines) to send as a cold outreach
+8. A 2-sentence personalized sales pitch in Hinglish
+9. A WhatsApp message (2-3 lines) for cold outreach
 10. Estimated project value in INR (e.g. ₹3,500 / ₹5,000 / ₹7,000)
 
 Respond ONLY with a valid JSON array. No markdown, no explanation. Format:
@@ -769,49 +769,38 @@ Respond ONLY with a valid JSON array. No markdown, no explanation. Format:
   }
 ]`;
 
-    const response = await fetch("https://leadradar2.krishnapati04578.workers.dev", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 4000,
-        messages: [{ role: "user", content: prompt }]
-      })
-    });
+  const response = await fetch("https://leadradar2.krishnapati04578.workers.dev", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt })
+  });
 
-    const data = await response.json();
+  const data = await response.json();
 
-    if (!response.ok) {
-      const errMsg = data.error?.message || `API error ${response.status}`;
-      throw new Error(errMsg);
-    }
+  if (!response.ok) throw new Error(data.error || `API error ${response.status}`);
 
-    if (!data.content) {
-      throw new Error('Invalid response from server. Check worker API key setup.');
-    }
+  const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  if (!raw) throw new Error('No response from AI. Please try again.');
 
-    const raw = data.content.map(b => b.text || '').join('');
-    const clean = raw.replace(/```json|```/g, '').trim();
+  const clean = raw.replace(/```json|```/g, '').trim();
 
-    let leads;
-    try {
-      leads = JSON.parse(clean);
-    } catch(e) {
-      const start = clean.indexOf('[');
-      if (start === -1) throw new Error('Unexpected response. Please try again.');
-      let str = clean.slice(start);
-      const lastBrace = str.lastIndexOf('}');
-      if (lastBrace === -1) throw new Error('No data returned. Please try again.');
-      str = str.slice(0, lastBrace + 1).replace(/,\s*$/, '') + ']';
-      try { leads = JSON.parse(str); }
-      catch(e2) { throw new Error('Parse error. Please try again.'); }
-    }
-    if (!Array.isArray(leads) || leads.length === 0) throw new Error('No leads found. Try a different area.');
-    return leads;
+  let leads;
+  try {
+    leads = JSON.parse(clean);
+  } catch(e) {
+    const start = clean.indexOf('[');
+    if (start === -1) throw new Error('Unexpected response. Please try again.');
+    let str = clean.slice(start);
+    const lastBrace = str.lastIndexOf('}');
+    if (lastBrace === -1) throw new Error('No data returned. Please try again.');
+    str = str.slice(0, lastBrace + 1).replace(/,\s*$/, '') + ']';
+    try { leads = JSON.parse(str); }
+    catch(e2) { throw new Error('Parse error. Please try again.'); }
   }
 
+  if (!Array.isArray(leads) || leads.length === 0) throw new Error('No leads found. Try a different area.');
+  return leads;
+}
   function showResults(leads, location) {
     currentLeads = leads;
     document.getElementById('resultsSection').style.display = 'block';
